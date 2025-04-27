@@ -1,0 +1,237 @@
+#Description: 2D problem for Fe++ flow and transport with lake recharge and near-surface injection
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      MODE GIRT
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== numerical methods ================================
+NUMERICAL_METHODS FLOW
+  NEWTON_SOLVER
+      ITOL_UPDATE 1.d0
+  /
+END 
+
+NUMERICAL_METHODS TRANSPORT
+  TIMESTEPPER
+    CFL_GOVERNOR 1.d0
+  /
+  NEWTON_SOLVER
+  /
+END
+
+#=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    Fe++
+  /
+  OUTPUT
+    ALL
+    TOTAL
+  /  
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE STRUCTURED
+  NXYZ 100 1 100
+  BOUNDS
+    0.d0 0.d0 0.d0
+    100.d0 1.d0 10.d0
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY 
+  DIFFUSION_COEFFICIENT 1.d-9 
+/
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  CHARACTERISTIC_CURVES default
+  POROSITY 0.25
+  TORTUOSITY 1.d0
+  PERMEABILITY
+    PERM_ISO 1.d-12 
+  /
+  LONGITUDINAL_DISPERSIVITY 10
+  TRANSVERSE_DISPERSIVITY_H 5.d0
+  TRANSVERSE_DISPERSIVITY_V 1.d0
+END
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES default
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    ALPHA 1.d-4
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
+END
+
+#=========================== output options ===================================
+OUTPUT
+  TIME_UNITS y
+  SNAPSHOT_FILE
+    FORMAT HDF5
+    PERIODIC TIME 100. d between 0. y and 2. y
+    PERIODIC TIME 30. d between 2. y and 15. y
+  /
+  VARIABLES
+    LIQUID_PRESSURE
+    LIQUID_SATURATION
+  /
+  VELOCITY_AT_CENTER
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 30.d0 y
+  INITIAL_TIMESTEP_SIZE 0.1 h
+  MAXIMUM_TIMESTEP_SIZE 30 d
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    100.d0 1.d0 10.d0
+  /
+END
+
+REGION east
+  FACE EAST
+  COORDINATES
+    100.d0 0.d0 0.d0
+    100.d0 1.d0 10.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 10.d0
+  /
+END
+
+REGION west_top
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 9.d0
+    10.d0 1.d0 10.d0
+  /
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    LIQUID_PRESSURE HYDROSTATIC
+  /
+  DATUM 0.d0 0.d0 9.d0
+  INTERPOLATION LINEAR 
+  GRADIENT
+    LIQUID_PRESSURE -0.05 0.d0 0.d0
+  /
+  LIQUID_PRESSURE 101325.0 
+END
+
+FLOW_CONDITION west
+  TYPE
+    LIQUID_PRESSURE HYDROSTATIC
+  /
+  DATUM 0.d0 0.d0 9.d0
+  LIQUID_PRESSURE 102000.d0
+END
+
+FLOW_CONDITION east
+  TYPE
+    LIQUID_PRESSURE SEEPAGE
+  /
+  DATUM 0.d0 0.d0 0.d0  # Set river elevation at 0 m
+  INTERPOLATION LINEAR 
+  CYCLIC
+  LIQUID_PRESSURE 101325.d0
+END
+
+#=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
+  TYPE ZERO_GRADIENT
+  CONSTRAINT_LIST
+    0.d0 initial
+  /
+END
+
+TRANSPORT_CONDITION point_source
+  TYPE DIRICHLET
+  CONSTRAINT_LIST
+    0.d0 point_source
+  /
+END
+
+TRANSPORT_CONDITION lake
+  TYPE DIRICHLET_ZERO_GRADIENT
+  CONSTRAINT_LIST
+    0.d0 initial
+  /
+END
+
+
+#=========================== constraints ======================================
+CONSTRAINT initial
+  CONCENTRATIONS
+    Fe++ 1.d-10  T
+  /
+END
+
+CONSTRAINT point_source
+  CONCENTRATIONS
+    Fe++ 1.d0  T
+  /
+END
+
+#=========================== condition couplers ===============================
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION initial
+  REGION all
+END
+
+BOUNDARY_CONDITION west_top_input
+  FLOW_CONDITION west
+  TRANSPORT_CONDITION point_source
+  REGION west_top
+END
+
+BOUNDARY_CONDITION lake
+  FLOW_CONDITION west
+  TRANSPORT_CONDITION lake
+  REGION west
+END
+
+BOUNDARY_CONDITION river
+  FLOW_CONDITION east
+  TRANSPORT_CONDITION initial
+  REGION east
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
+END_SUBSURFACE

@@ -1,0 +1,297 @@
+#Description: 2D problem for Fe++ flow and transport with four-layer stratigraphy including a confining layer
+
+SIMULATION
+  SIMULATION_TYPE SUBSURFACE
+  PROCESS_MODELS
+    SUBSURFACE_FLOW flow
+      MODE RICHARDS
+    /
+    SUBSURFACE_TRANSPORT transport
+      MODE GIRT
+    /
+  /
+END
+
+SUBSURFACE
+
+#=========================== numerical methods ================================
+NUMERICAL_METHODS FLOW
+  NEWTON_SOLVER
+      ITOL_UPDATE 1.d0
+  /
+END 
+
+NUMERICAL_METHODS TRANSPORT
+  TIMESTEPPER
+    CFL_GOVERNOR 1.d0
+  /
+  NEWTON_SOLVER
+  /
+END
+
+#=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    Fe++
+  /
+  OUTPUT
+    ALL
+    TOTAL
+  /  
+END
+
+#=========================== discretization ===================================
+GRID
+  TYPE STRUCTURED
+  NXYZ 100 1 100
+  BOUNDS
+    0.d0 0.d0 0.d0
+    100.d0 1.d0 10.d0
+  /
+END
+
+#=========================== fluid properties =================================
+FLUID_PROPERTY 
+  DIFFUSION_COEFFICIENT 1.d-9 
+/
+
+#=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  CHARACTERISTIC_CURVES default
+  POROSITY 0.25
+  TORTUOSITY 1.d0
+  PERMEABILITY
+    PERM_ISO 1.d-12 
+  /
+  LONGITUDINAL_DISPERSIVITY 10
+  TRANSVERSE_DISPERSIVITY_H 5.d0
+  TRANSVERSE_DISPERSIVITY_V 1.d0
+END
+
+MATERIAL_PROPERTY soil2
+  ID 2
+  CHARACTERISTIC_CURVES default
+  POROSITY 0.35
+  TORTUOSITY 1.d0
+  PERMEABILITY
+    PERM_ISO 5.d-13
+  /
+  LONGITUDINAL_DISPERSIVITY 5
+  TRANSVERSE_DISPERSIVITY_H 2.d0
+  TRANSVERSE_DISPERSIVITY_V 0.5d0
+END
+
+MATERIAL_PROPERTY soil3
+  ID 3
+  CHARACTERISTIC_CURVES default
+  POROSITY 0.1
+  TORTUOSITY 1.d0
+  PERMEABILITY
+    PERM_ISO 1.d-14
+  /
+  LONGITUDINAL_DISPERSIVITY 1
+  TRANSVERSE_DISPERSIVITY_H 0.1d0
+  TRANSVERSE_DISPERSIVITY_V 0.05d0
+END
+
+MATERIAL_PROPERTY soil4
+  ID 4
+  CHARACTERISTIC_CURVES default
+  POROSITY 0.3
+  TORTUOSITY 1.d0
+  PERMEABILITY
+    PERM_ISO 2.d-12
+  /
+  LONGITUDINAL_DISPERSIVITY 8
+  TRANSVERSE_DISPERSIVITY_H 3.d0
+  TRANSVERSE_DISPERSIVITY_V 1.d0
+END
+
+#=========================== characteristic curves ============================
+CHARACTERISTIC_CURVES default
+  SATURATION_FUNCTION VAN_GENUCHTEN
+    ALPHA 1.d-4
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
+  PERMEABILITY_FUNCTION MUALEM_VG_LIQ
+    M 0.5d0
+    LIQUID_RESIDUAL_SATURATION 0.1d0
+  /
+END
+
+#=========================== output options ===================================
+OUTPUT
+  TIME_UNITS y
+  SNAPSHOT_FILE
+    FORMAT HDF5
+    PERIODIC TIME 100. d between 0. y and 2. y
+    PERIODIC TIME 30. d between 2. y and 15. y
+  /
+  VARIABLES
+    LIQUID_PRESSURE
+    LIQUID_SATURATION
+  /
+  VELOCITY_AT_CENTER
+END
+
+#=========================== times ============================================
+TIME
+  FINAL_TIME 15.d0 y
+  INITIAL_TIMESTEP_SIZE 0.1 h
+  MAXIMUM_TIMESTEP_SIZE 30 d
+END
+
+#=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    100.d0 1.d0 10.d0
+  /
+END
+
+REGION east
+  FACE EAST
+  COORDINATES
+    100.d0 0.d0 0.d0
+    100.d0 1.d0 10.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 10.d0
+  /
+END
+
+REGION layer1
+  COORDINATES
+    0.d0 0.d0 0.d0
+    100.d0 1.d0 2.5d0
+  /
+END
+
+REGION layer2
+  COORDINATES
+    0.d0 0.d0 2.5d0
+    100.d0 1.d0 5.d0
+  /
+END
+
+REGION layer3
+  COORDINATES
+    0.d0 0.d0 5.d0
+    100.d0 1.d0 7.5d0
+  /
+END
+
+REGION layer4
+  COORDINATES
+    0.d0 0.d0 7.5d0
+    100.d0 1.d0 10.d0
+  /
+END
+
+#=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    LIQUID_PRESSURE HYDROSTATIC
+  /
+  DATUM 0.d0 0.d0 9.d0
+  INTERPOLATION LINEAR 
+  GRADIENT
+    LIQUID_PRESSURE -0.02 0.d0 0.d0
+  /
+  LIQUID_PRESSURE 101325.0 
+END
+
+FLOW_CONDITION west
+  TYPE
+    LIQUID_PRESSURE HYDROSTATIC
+  /
+  DATUM 0.d0 0.d0 3.d0
+  LIQUID_PRESSURE 101325.d0
+END
+
+FLOW_CONDITION east
+  TYPE
+    LIQUID_PRESSURE SEEPAGE
+  /
+  INTERPOLATION LINEAR 
+  CYCLIC
+  LIQUID_PRESSURE 101325.d0
+END
+
+#=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
+  TYPE ZERO_GRADIENT
+  CONSTRAINT_LIST
+    0.d0 initial
+  /
+END
+
+TRANSPORT_CONDITION point_source
+  TYPE DIRICHLET_ZERO_GRADIENT
+  CONSTRAINT_LIST
+    0.d0 initial
+    63072000.d0 lake
+  /
+END
+
+#=========================== constraints ======================================
+CONSTRAINT initial
+  CONCENTRATIONS
+    Fe++ 1.d-10  T
+  /
+END
+
+CONSTRAINT lake
+  CONCENTRATIONS
+    Fe++ 1.d0  T
+  /
+END
+
+#=========================== condition couplers ===============================
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  TRANSPORT_CONDITION initial
+  REGION all
+END
+
+BOUNDARY_CONDITION point_source
+  FLOW_CONDITION west
+  TRANSPORT_CONDITION lake
+  REGION west
+END
+
+BOUNDARY_CONDITION river
+  FLOW_CONDITION east
+  TRANSPORT_CONDITION initial
+  REGION east
+END
+
+#=========================== stratigraphy couplers ============================
+STRATA
+  REGION layer1
+  MATERIAL soil1
+END
+
+STRATA
+  REGION layer2
+  MATERIAL soil2
+END
+
+STRATA
+  REGION layer3
+  MATERIAL soil3
+END
+
+STRATA
+  REGION layer4
+  MATERIAL soil4
+END
+
+END_SUBSURFACE
