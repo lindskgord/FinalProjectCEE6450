@@ -1,4 +1,3 @@
-#Description: 2D problem for Fe++ flow and transport with four-layer stratigraphy and vertical fault zone
 
 SIMULATION
   SIMULATION_TYPE SUBSURFACE
@@ -253,7 +252,7 @@ TRANSPORT_CONDITION initial
   /
 END
 
-TRANSPORT_CONDITION lake
+TRANSPORT_CONDITION point_source
   TYPE DIRICHLET_ZERO_GRADIENT
   CONSTRAINT_LIST
     0.d0 initial
@@ -281,7 +280,7 @@ INITIAL_CONDITION
   REGION all
 END
 
-BOUNDARY_CONDITION lake
+BOUNDARY_CONDITION point_source
   FLOW_CONDITION west
   TRANSPORT_CONDITION lake
   REGION west
