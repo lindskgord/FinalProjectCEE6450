@@ -1,4 +1,3 @@
-#Description: 2D problem for Fe++ flow and transport
 
 SIMULATION
   SIMULATION_TYPE SUBSURFACE
@@ -155,7 +154,6 @@ FLOW_CONDITION east
   /
   INTERPOLATION LINEAR 
   CYCLIC
-  #DATUM FILE ./river_stage.txt
   LIQUID_PRESSURE 101325.d0
 END
 
